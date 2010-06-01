@@ -3522,7 +3522,7 @@ def _getCharacterEncoding(http_headers, xml_data):
     '''Get the character encoding of the XML document
 
     http_headers is a dictionary
-    xml_data is a raw string (not Unicode)
+    xml_data is a raw bytes (not string)
     
     This is so much trickier than it sounds, it's not even funny.
     According to RFC 3023 ('XML Media Types'), if the HTTP Content-Type
@@ -3655,6 +3655,10 @@ def _getCharacterEncoding(http_headers, xml_data):
     # apparently MSIE and Firefox both do the following switch:
     if true_encoding.lower() == 'gb2312':
         true_encoding = 'gb18030'
+    # almost all feeds in cp949 are declared as euc-kr, but since they're
+    # incompatible in some cases, we're doing a simple check:
+    if true_encoding.lower() in ['euc-kr', 'ks_c_5601-1987'] and re.search(b'[\x81-\xa0]', xml_data):
+        true_encoding = 'cp949'
     return true_encoding, http_encoding, xml_encoding, sniffed_xml_encoding, acceptable_content_type
     
 def _toUTF8(data, encoding):
@@ -3746,7 +3750,7 @@ def _stripDoctype(data):
     return version, data, entities
     
 def parse(url_file_stream_or_string, etag=None, modified=None, agent=None, referrer=None, handlers=[]):
-    '''Parse a feed from a URL, file, stream, or string'''
+    '''Parse a feed from a URL, file, stream, or bytes'''
     result = FeedParserDict()
     result['feed'] = FeedParserDict()
     result['entries'] = []

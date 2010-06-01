@@ -181,6 +181,7 @@ if __name__ == "__main__":
     sys.argv = [sys.argv[0]] #+ sys.argv[2:]
   else:
     allfiles = glob.glob(os.path.join('.', 'tests', '**', '**', '*.xml'))
+    allfiles += glob.glob(os.path.join('.', 'moretests', '**', '**', '*.xml'))
 #  print(allfiles)
 #  print(sys.argv)
   httpfiles = [f for f in allfiles if f.count('http')]

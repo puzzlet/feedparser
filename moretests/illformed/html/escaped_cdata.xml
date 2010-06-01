@@ -1,0 +1,12 @@
+<!--
+Description:  cdata escaped to entity
+Expect:       bozo and feed['item'][0]['description'] == 'description'
+-->
+<rss version="2.0">
+<channel>
+<item>
+<description>&lt;![CDATA[description]]&gt;</description>
+</item>
+</channel>
+</rss
+

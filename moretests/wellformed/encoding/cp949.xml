@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="EUC-KR"?>
+<!--
+SkipUnless:   __import__('codecs').lookup('cp949')
+Description:  cp949, declared as euc-kr as they usually are
+Expect:       not bozo and encoding == 'cp949'
+-->
+<rss version="2.0">
+<channel>
+  <item>
+    <description>꺠짐</description>
+  </item>
+</channel>
+</rss>
+
