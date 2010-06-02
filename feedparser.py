@@ -78,6 +78,7 @@ SANITIZE_HTML = 1
 # ---------- required modules (should come with any Python distribution) ----------
 import html.parser, re, sys, copy, time, email, types, cgi, urllib, urllib.request, urllib.error, urllib.parse
 from io import StringIO as _StringIO
+from io import BytesIO
 
 # ---------- optional modules (feedparser will work without these, but with reduced functionality) ----------
 
@@ -3096,7 +3097,7 @@ def _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, h
         pass
 
     # treat url_file_stream_or_string as string
-    return _StringIO(str(url_file_stream_or_string))
+    return BytesIO(str(url_file_stream_or_string))
 
 _date_handlers = []
 def registerDateHandler(func):
@@ -3771,7 +3772,7 @@ def parse(url_file_stream_or_string, etag=None, modified=None, agent=None, refer
     if f and data and hasattr(f, 'headers'):
         if gzip and f.headers.get('content-encoding', '') == 'gzip':
             try:
-                data = gzip.GzipFile(fileobj=_StringIO(data)).read()
+                data = gzip.GzipFile(fileobj=BytesIO(data)).read()
             except Exception as e:
                 # Some feeds claim to be gzipped but they're not, so
                 # we get garbage.  Ideally, we should re-request the
