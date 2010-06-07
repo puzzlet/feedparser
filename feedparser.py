@@ -131,13 +131,10 @@ from html.entities import name2codepoint, codepoint2name
 # feedparser is tested with BeautifulSoup 3.0.x, but it might work with the
 # older 2.x series.  If it doesn't, and you can figure out why, I'll accept a
 # patch and modify the compatibility statement accordingly.
-#try:
-#    import BeautifulSoup
-#except:
-#    BeautifulSoup = None
-
-# Not using BeautifulSoup until it's stabilized with Python 3.
-BeautifulSoup = None
+try:
+    import BeautifulSoup
+except:
+    BeautifulSoup = None
 
 # ---------- don't touch these ----------
 class ThingsNobodyCaresAboutButMe(Exception): pass
@@ -710,8 +707,8 @@ def _urljoin(base, uri):
     try:
         return urllib.parse.urljoin(base, uri)
     except:
-        uri = urlparse.parse.urlunparse([urllib.quote(part) for part in urlparse.parse.urlparse(uri)])
-        return urlparse.parse.urljoin(base, uri)
+        uri = urllib.parse.urlunparse([urllib.quote(part) for part in urllib.parse.urlparse(uri)])
+        return urllib.parse.urljoin(base, uri)
 
 class _FeedParserMixin:
     namespaces = {'': '',
@@ -1218,21 +1215,21 @@ class _FeedParserMixin:
     # text, but this is routinely ignored.  This is an attempt to detect
     # the most common cases.  As false positives often result in silent
     # data loss, this function errs on the conservative side.
-    def lookslikehtml(self, str_):
+    def lookslikehtml(self, str):
         if self.version.startswith('atom'): return
         if self.contentparams.get('type','text/html') != 'text/plain': return
 
         # must have a close tag or a entity reference to qualify
-        if not (re.search(r'</(\w+)>',str_) or re.search("&#?\w+;",str_)): return
+        if not (re.search(r'</(\w+)>',str) or re.search("&#?\w+;",str)): return
 
         # all tags must be in a restricted subset of valid HTML tags
         if any(t.lower() not in _HTMLSanitizer.acceptable_elements for t in
-            re.findall(r'</?(\w+)',str_)): return
+            re.findall(r'</?(\w+)',str)): return
 
         # all entities must have been defined as valid HTML entities
         from html.entities import entitydefs
         if any(e not in entitydefs.keys() for e in
-            re.findall(r'&(\w+);',str_)): return
+            re.findall(r'&(\w+);',str)): return
 
         return 1
 
@@ -2058,9 +2055,9 @@ class _BaseHTMLProcessor(SGMLParser):
         return j
 
     def feed(self, data):
-        data = re.compile('<!((?!DOCTYPE|--|\[))', re.IGNORECASE).sub('&lt;!\\1', data)
+        data = re.compile(r'<!((?!DOCTYPE|--|\[))', re.IGNORECASE).sub(r'&lt;!\1', data)
         #data = re.sub(r'<(\S+?)\s*?/>', self._shorttag_replace, data) # bug [ 1399464 ] Bad regexp for _shorttag_replace
-        data = re.sub('<([^<>\s]+?)\s*/>', self._shorttag_replace, data) 
+        data = re.sub(r'<([^<>\s]+?)\s*/>', self._shorttag_replace, data) 
         data = data.replace('&#39;', "'")
         data = data.replace('&#34;', '"')
         if self.encoding and isinstance(data, str):
@@ -2248,7 +2245,7 @@ class _MicroformatsParser:
         return sFolded
 
     def normalize(self, s):
-        return re.sub(r'\s+', ' ', s).strip()
+        return re.sub('\s+', ' ', s).strip()
     
     def unique(self, aList):
         results = []
@@ -2329,7 +2326,7 @@ class _MicroformatsParser:
             if sValue:
                 sValue = bNormalize and self.normalize(sValue) or sValue.strip()
             if not sValue:
-                sValue = elmResult.renderContents()
+                sValue = elmResult.renderContents(encoding=None)
                 sValue = re.sub(r'<\S[^>]*>', '', sValue)
                 sValue = sValue.replace('\r\n', '\n')
                 sValue = sValue.replace('\r', '\n')
@@ -2569,7 +2566,7 @@ class _MicroformatsParser:
            linktype.startswith('video/') or \
            (linktype.startswith('application/') and not linktype.endswith('xml')):
             return 1
-        path = urlparse.urlparse(attrsD['href'])[2]
+        path = urllib.parse.urlparse(attrsD['href'])[2]
         if path.find('.') == -1: return 0
         fileext = path.split('.').pop().lower()
         return fileext in self.known_binary_extensions
@@ -2580,12 +2577,12 @@ class _MicroformatsParser:
             href = elm.get('href')
             if not href: continue
             urlscheme, domain, path, params, query, fragment = \
-                       urlparse.urlparse(_urljoin(self.baseuri, href))
+                       urllib.parse.urlparse(_urljoin(self.baseuri, href))
             segments = path.split('/')
             tag = segments.pop()
             if not tag:
                 tag = segments.pop()
-            tagscheme = urlparse.urlunparse((urlscheme, domain, '/'.join(segments), '', '', ''))
+            tagscheme = urllib.parse.urlunparse((urlscheme, domain, '/'.join(segments), '', '', ''))
             if not tagscheme.endswith('/'):
                 tagscheme += '/'
             self.tags.append(FeedParserDict({"term": tag, "scheme": tagscheme, "label": elm.string or ''}))
