@@ -10,7 +10,7 @@ Required: Python 3.0 or later
 Recommended: Python 3.1 or later
 """
 
-__version__ = "4.2-pre-" + "$Revision: 311 $"[11:14] + "-svn"
+__version__ = "4.2-pre-" + "$Revision: 312 $"[11:14] + "-svn"
 __license__ = """Copyright (c) 2002-2008, Mark Pilgrim, All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -554,7 +554,7 @@ SUPPORTED_VERSIONS = {'': 'unknown',
                       'hotrss': 'Hot RSS'
                       }
 
-from collections import UserDict
+UserDict = dict
 
 class FeedParserDict(UserDict):
     keymap = {'channel': 'feed',
@@ -572,29 +572,26 @@ class FeedParserDict(UserDict):
               'copyright_detail': 'rights_detail',
               'tagline': 'subtitle',
               'tagline_detail': 'subtitle_detail'}
-    def __missing__(self, key):
+    def __getitem__(self, key):
         if key == 'category':
-            return self['tags'][0]['term']
+            return UserDict.__getitem__(self, 'tags')[0]['term']
         if key == 'enclosures':
             norel = lambda link: FeedParserDict([(name,value) for (name,value) in link.items() if name!='rel'])
-            return [norel(link) for link in self['links'] if link['rel']=='enclosure']
+            return [norel(link) for link in UserDict.__getitem__(self, 'links') if link['rel']=='enclosure']
         if key == 'license':
-            for link in self['links']:
+            for link in UserDict.__getitem__(self, 'links'):
                 if link['rel']=='license' and 'href' in link:
                     return link['href']
         if key == 'categories':
-            return [(tag['scheme'], tag['term']) for tag in self['tags']]
+            return [(tag['scheme'], tag['term']) for tag in UserDict.__getitem__(self, 'tags')]
         realkey = self.keymap.get(key, key)
         if isinstance(realkey, list):
             for k in realkey:
-                if k in self:
-                    return self[k]
-            raise KeyError(realkey)
-        if key in self:
-            return self[key]
-        if realkey in self:
-            return self[realkey]
-        raise KeyError(realkey)
+                if super().__contains__(k):
+                    return UserDict.__getitem__(self, k)
+        if super().__contains__(key):
+            return UserDict.__getitem__(self, key)
+        return UserDict.__getitem__(self, realkey)
 
     def __setitem__(self, key, value):
         for k in self.keymap.keys():
@@ -615,9 +612,9 @@ class FeedParserDict(UserDict):
             self[key] = value
         return self[key]
         
-    def has_key(self, key):
+    def __contains__(self, key):
         try:
-            return hasattr(self, key) or UserDict.has_key(self, key)
+            return hasattr(self, key) or UserDict.__contains__(self, key)
         except AttributeError:
             return False
         
@@ -1473,7 +1470,7 @@ class _FeedParserMixin:
     def _getContext(self):
         if self.insource:
             context = self.sourcedata
-        elif self.inimage:
+        elif self.inimage and 'image' in self.feeddata:
             context = self.feeddata['image']
         elif self.intextinput:
             context = self.feeddata['textinput']
@@ -3041,7 +3038,7 @@ def _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, h
 
         # iri support
         try:
-            if isinstance(url_file_stream_or_string,str):
+            if isinstance(url_file_stream_or_string, str):
                 url_file_stream_or_string = url_file_stream_or_string.encode('idna')
             else:
                 url_file_stream_or_string = url_file_stream_or_string.decode('utf-8').encode('idna')
@@ -3509,7 +3506,6 @@ def _parse_date(dateString):
                 if _debug: sys.stderr.write('date handler function must return 9-tuple\n')
                 raise ValueError
             map(int, date9tuple)
-            if _debug: sys.stderr.write('%s succeeded.\n' % handler.__name__)
             return date9tuple
         except Exception as e:
             if _debug: sys.stderr.write('%s raised %s\n' % (handler.__name__, repr(e)))
