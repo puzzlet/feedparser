@@ -190,23 +190,6 @@ class SGMLParser(html.parser.HTMLParser):
         self.literal = 0
         html.parser.HTMLParser.reset(self)
 
-    def setnomoretags(self):
-        """Enter literal mode (CDATA) till EOF.
-
-        Intended for derived classes only.
-        """
-        self.nomoretags = self.literal = 1
-
-    def setliteral(self, *args):
-        """Enter literal mode (CDATA).
-
-        Intended for derived classes only.
-        """
-        self.literal = 1
-
-    def feed(self, data):
-        html.parser.HTMLParser.feed(self, str(data, self.encoding))
-
     # Internal -- handle data as far as reasonable.  May leave state
     # and data to be processed by a subsequent call.  If 'end' is
     # true, force handling all data as if followed by EOF marker.
@@ -311,9 +294,6 @@ class SGMLParser(html.parser.HTMLParser):
             i = n
         self.rawdata = rawdata[i:]
         # XXX if end: check for empty stack
-
-    # Extensions for the DOCTYPE scanner:
-    _decl_otherchars = '='
 
     # Internal -- parse processing instr, return length or -1 if not terminated
     def parse_pi(self, i):
@@ -423,21 +403,17 @@ class SGMLParser(html.parser.HTMLParser):
     # Internal -- finish processing of start tag
     # Return -1 for unknown tag, 0 for open-only tag, 1 for balanced tag
     def finish_starttag(self, tag, attrs):
-        try:
-            method = getattr(self, 'start_' + tag)
-        except AttributeError:
-            try:
-                method = getattr(self, 'do_' + tag)
-            except AttributeError:
-                self.unknown_starttag(tag, attrs)
-                return -1
-            else:
-                self.handle_starttag(tag, method, attrs)
-                return 0
-        else:
+        method = getattr(self, 'start_' + tag, None)
+        if method:
             self.stack.append(tag)
-            self.handle_starttag(tag, method, attrs)
+            method(tag, attrs)
             return 1
+        method = getattr(self, 'do_' + tag, None)
+        if method:
+            method(tag, attrs)
+            return 0
+        self.unknown_starttag(tag, attrs)
+        return -1
 
     # Internal -- finish processing of end tag
     def finish_endtag(self, tag):
@@ -448,35 +424,19 @@ class SGMLParser(html.parser.HTMLParser):
                 return
         else:
             if tag not in self.stack:
-                try:
-                    method = getattr(self, 'end_' + tag)
-                except AttributeError:
-                    self.unknown_endtag(tag)
-                else:
+                if getattr(self, 'end_' + tag, None):
                     self.report_unbalanced(tag)
+                else:
+                    self.unknown_endtag(tag)
                 return
             found = len(self.stack)
             for i in range(found):
                 if self.stack[i] == tag: found = i
         while len(self.stack) > found:
             tag = self.stack[-1]
-            try:
-                method = getattr(self, 'end_' + tag)
-            except AttributeError:
-                method = None
-            if method:
-                self.handle_endtag(tag, method)
-            else:
-                self.unknown_endtag(tag)
+            method = getattr(self, 'end_' + tag, self.unknown_endtag)
+            method(tag)
             del self.stack[-1]
-
-    # Overridable -- handle start tag
-    def handle_starttag(self, tag, method, attrs):
-        method(attrs)
-
-    # Overridable -- handle end tag
-    def handle_endtag(self, tag, method):
-        method()
 
     # Example -- report an unbalanced </...> tag.
     def report_unbalanced(self, tag):
@@ -492,18 +452,7 @@ class SGMLParser(html.parser.HTMLParser):
             return
         if not 0 <= n <= 127:
             return
-        return self.convert_codepoint(n)
-
-    def convert_codepoint(self, codepoint):
-        return chr(codepoint)
-
-    def handle_charref(self, name):
-        """Handle character reference, no need to override."""
-        replacement = self.convert_charref(name)
-        if replacement is None:
-            self.unknown_charref(name)
-        else:
-            self.handle_data(replacement)
+        return chr(n)
 
     # Definition of entities -- derived classes may override
     entitydefs = \
@@ -515,25 +464,7 @@ class SGMLParser(html.parser.HTMLParser):
         As an alternative to overriding this method; one can tailor the
         results by setting up the self.entitydefs mapping appropriately.
         """
-        table = self.entitydefs
-        if name in table:
-            return table[name]
-        else:
-            return
-
-    def handle_entityref(self, name):
-        """Handle entity references, no need to override."""
-        replacement = self.convert_entityref(name)
-        if replacement is None:
-            self.unknown_entityref(name)
-        else:
-            self.handle_data(replacement)
-
-    # To be overridden -- handlers for unknown objects
-    def unknown_starttag(self, tag, attrs): pass
-    def unknown_endtag(self, tag): pass
-    def unknown_charref(self, ref): pass
-    def unknown_entityref(self, ref): pass
+        return self.entitydefs.get(name, None)
 
 SUPPORTED_VERSIONS = {'': 'unknown',
                       'rss090': 'RSS 0.90',
@@ -2057,8 +1988,6 @@ class _BaseHTMLProcessor(SGMLParser):
         data = re.sub(r'<([^<>\s]+?)\s*/>', self._shorttag_replace, data) 
         data = data.replace('&#39;', "'")
         data = data.replace('&#34;', '"')
-        if self.encoding and isinstance(data, str):
-            data = data.encode(self.encoding)
         SGMLParser.feed(self, data)
         SGMLParser.close(self)
 
@@ -2125,7 +2054,7 @@ class _BaseHTMLProcessor(SGMLParser):
         # called for each block of plain text, i.e. outside of any tag and
         # not containing any character or entity references
         # Store the original text verbatim.
-        if _debug: sys.stderr.write('_BaseHTMLProcessor, handle_data, text=%s\n' % text)
+        if _debug: sys.stderr.write('_BaseHTMLProcessor, handle_data, text=%s\n' % repr(text))
         self.pieces.append(text)
         
     def handle_comment(self, text):
@@ -2171,7 +2100,7 @@ class _BaseHTMLProcessor(SGMLParser):
 
     def output(self):
         '''Return processed HTML as a single string'''
-        return ''.join([str(p) for p in self.pieces])
+        return ''.join(self.pieces)
 
 class _LooseFeedParser(_FeedParserMixin, _BaseHTMLProcessor):
     def __init__(self, baseuri, baselang, encoding, entities):
@@ -3044,8 +2973,6 @@ def _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, h
                 url_file_stream_or_string = url_file_stream_or_string.decode('utf-8').encode('idna')
         except:
             pass
-        if isinstance(url_file_stream_or_string,bytes):
-            url_file_stream_or_string = url_file_stream_or_string.decode('ascii')
 
         # try to open with urllib2 (to use optional headers)
         request = urllib.request.Request(url_file_stream_or_string)
@@ -3733,9 +3660,9 @@ def _stripDoctype(data):
     replacement=b''
     entities = {}
     if len(doctype_results)==1 and entity_results:
-       safe_pattern=re.compile(b'\s+(\w+)\s+"(&#\w+;|[^&"]*)"')
-       safe_entities=[e for e in entity_results if safe_pattern.match(e)]
-       if safe_entities:
+        safe_pattern=re.compile(b'\s+(\w+)\s+"(&#\w+;|[^&"]*)"')
+        safe_entities=[e for e in entity_results if safe_pattern.match(e)]
+        if safe_entities:
             replacement=b'<!DOCTYPE feed [\n  <!ENTITY '+b'>\n  <!ENTITY '.join(safe_entities)+b'>\n]>' 
             for k, v in safe_pattern.findall(replacement):
                 entities[k.decode('iso-8859-1')] = v.decode('iso-8859-1')
