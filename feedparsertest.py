@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""$Id: feedparsertest.py 297 2009-12-25 06:04:54Z adewale $"""
+"""$Id: feedparsertest.py 348 2010-12-24 11:45:05Z adewale $"""
 
 __author__ = "Mark Pilgrim <http://diveintomark.org/>"
 __license__ = """Copyright (c) 2004-2008, Mark Pilgrim, All rights reserved.
@@ -104,9 +104,27 @@ class TestCase(unittest.TestCase):
     except:
       pass
     failure=(msg or 'not eval(%s) \nWITH env(%s)' % (evalString, pprint.pformat(env)))
+    evalString = py3(evalString)
     if not eval(evalString, env):
       raise self.failureException(failure)
-  
+
+
+#---------- additional api unit tests, not backed by files
+
+class TestBuildRequest(unittest.TestCase):
+  def test_extra_headers(self):
+    """You can pass in extra headers and they go into the request object."""
+
+    request = feedparser._build_urllib2_request(
+      'http://example.com/feed',
+      'agent-name',
+      None, None, None, None,
+      {'Cache-Control': 'max-age=0'})
+    # nb, urllib2 folds the case of the headers
+    self.assertEquals(
+      request.get_header('Cache-control'), 'max-age=0')
+
+
 #---------- parse test files and create test methods ----------
 
 skip_re = re.compile(b"SkipUnless:\s*(.*?)\n")
@@ -157,14 +175,13 @@ def getDescription(xmlfile):
   if not search_results:
     raise RuntimeError("can't parse %s" % xmlfile)
   description, evalString = [_.strip() for _ in list(search_results.groups())]
-  description = xmlfile.encode('utf-8') + b": " + description
-  evalString = py3(evalString)
+  description = xmlfile + ": " + str(description, 'utf8')
   return TestCase.failUnlessEval, description, evalString, skipUnless
 
 def buildTestCase(xmlfile, description, method, evalString):
   def func(self, xmlfile=xmlfile, method=method, evalString=evalString):
        method(self, evalString, feedparser.parse(xmlfile))
-  func.__doc__ = str(description, 'ascii')
+  func.__doc__ = description
   return func
 
 from lib2to3 import refactor
