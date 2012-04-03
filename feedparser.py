@@ -2723,7 +2723,7 @@ def _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, h
     if url_file_stream_or_string == '-':
         return sys.stdin
 
-    if url_file_stream_or_string, str and urllib.parse.urlparse(url_file_stream_or_string)[0] in ('http', 'https', 'ftp', 'file', 'feed'):
+    if url_file_stream_or_string and urllib.parse.urlparse(url_file_stream_or_string)[0] in ('http', 'https', 'ftp', 'file', 'feed'):
         # Deal with the feed URI scheme
         if url_file_stream_or_string.startswith('feed:http'):
             url_file_stream_or_string = url_file_stream_or_string[5:]
@@ -3291,7 +3291,7 @@ def _getCharacterEncoding(http_headers, xml_data):
     sniffed_xml_encoding = ''
     xml_encoding = ''
     true_encoding = ''
-    http_content_type, http_encoding = _parseHTTPContentType(http_headers.get('content-type', http_headers.get('Content-type')))
+    http_content_type, http_encoding = _parseHTTPContentType(http_headers.get('content-type', http_headers.get('Content-type', http_headers.get('Content-Type'))))
     # Must sniff for non-ASCII-compatible character encodings before
     # searching for XML declaration.  This heuristic is defined in
     # section F of the XML specification:
@@ -3478,7 +3478,6 @@ def parse(url_file_stream_or_string, etag=None, modified=None, agent=None, refer
         f = _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, handlers, request_headers)
         data = f.read()
     except Exception as e:
-        raise
         result['bozo'] = 1
         result['bozo_exception'] = e
         data = None
@@ -3494,7 +3493,7 @@ def parse(url_file_stream_or_string, etag=None, modified=None, agent=None, refer
 
     # if feed is gzip-compressed, decompress it
     if f and data and 'headers' in result:
-        if gzip and result['headers'].get('content-encoding') == 'gzip':
+        if gzip and result['headers'].get('content-encoding', result['headers'].get('Content-Encoding')) == 'gzip':
             try:
                 data = gzip.GzipFile(fileobj=BytesIO(data)).read()
             except Exception as e:
