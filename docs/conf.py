@@ -1,9 +1,9 @@
 # project information
-project = u'feedparser'
-copyright = u'2004-8, Mark Pilgrim'
-version = u'5.1.2'
-release = u'5.1.2'
-language = u'en'
+project = 'feedparser'
+copyright = '2004-8, Mark Pilgrim'
+version = '5.1.2'
+release = '5.1.2'
+language = 'en'
 
 # documentation options
 master_doc = 'index'
