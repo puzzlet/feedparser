@@ -82,10 +82,7 @@ SANITIZE_HTML = 1
 PARSE_MICROFORMATS = 1
 
 # ---------- Python 3 modules (make it work if possible) ----------
-try:
-    import rfc822
-except ImportError:
-    from email import _parseaddr as rfc822
+from email import _parseaddr as rfc822
 
 try:
     # Python 3.1 introduces bytes.maketrans and simultaneously
@@ -96,33 +93,16 @@ except (NameError, AttributeError):
     _maketrans = string.maketrans
 
 # base64 support for Atom feeds that contain embedded binary data
-try:
-    import base64, binascii
-except ImportError:
-    base64 = binascii = None
-else:
-    # Python 3.1 deprecates decodestring in favor of decodebytes
-    _base64decode = getattr(base64, 'decodebytes', base64.decodestring)
+import base64, binascii
+# Python 3.1 deprecates decodestring in favor of decodebytes
+_base64decode = getattr(base64, 'decodebytes', base64.decodestring)
 
 # _s2bytes: convert a UTF-8 str to bytes if the interpreter is Python 3
 # _l2bytes: convert a list of ints to bytes if the interpreter is Python 3
-try:
-    if bytes is str:
-        # In Python 2.5 and below, bytes doesn't exist (NameError)
-        # In Python 2.6 and above, bytes and str are the same type
-        raise NameError
-except NameError:
-    # Python 2
-    def _s2bytes(s):
-        return s
-    def _l2bytes(l):
-        return ''.join(map(chr, l))
-else:
-    # Python 3
-    def _s2bytes(s):
-        return bytes(s, 'utf8')
-    def _l2bytes(l):
-        return bytes(l)
+def _s2bytes(s):
+    return bytes(s, 'utf8')
+def _l2bytes(l):
+    return bytes(l)
 
 # If you want feedparser to allow all URL schemes, set this to ()
 # List culled from Python's urlparse documentation at:
@@ -149,21 +129,12 @@ import datetime
 import re
 import struct
 import time
-import types
-import urllib.request, urllib.parse, urllib.error
 import urllib.request, urllib.error, urllib.parse
-import urllib.parse
 import warnings
 
-from html.entities import name2codepoint, codepoint2name, entitydefs
+from html.entities import name2codepoint, entitydefs
 
-try:
-    from io import BytesIO as _StringIO
-except ImportError:
-    try:
-        from io import StringIO as _StringIO
-    except ImportError:
-        from io import StringIO as _StringIO
+from io import BytesIO as _StringIO
 
 # ---------- optional modules (feedparser will work without these, but with reduced functionality) ----------
 
@@ -260,13 +231,6 @@ else:
             return self.match.end(n)
     endbracket = _EndBracketRegEx()
 
-
-# iconv_codec provides support for more character encodings.
-# It's available from http://cjkpython.i18n.org/
-try:
-    import iconv_codec
-except ImportError:
-    pass
 
 # chardet library auto-detects character encodings
 # Download from http://chardet.feedparser.org/
