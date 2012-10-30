@@ -756,6 +756,7 @@ def runtests():
     "TestCases above, spawn the HTTP server, and run the test suite"
     if sys.argv[1:]:
         allfiles = [s for s in reduce(operator.add, list(map(glob.glob, sys.argv[1:])), []) if s.endswith('.xml')]
+        wellformedfiles = illformedfiles = encodingfiles = entitiesfiles = microformatfiles = []
         sys.argv = [sys.argv[0]] #+ sys.argv[2:]
     else:
         allfiles = glob.glob(os.path.join('.', 'tests', '**', '**', '*.xml'))

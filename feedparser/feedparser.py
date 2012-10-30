@@ -95,7 +95,7 @@ except (NameError, AttributeError):
 # base64 support for Atom feeds that contain embedded binary data
 import base64, binascii
 # Python 3.1 deprecates decodestring in favor of decodebytes
-_base64decode = getattr(base64, 'decodebytes', base64.decodestring)
+_base64decode = base64.decodebytes
 
 # _s2bytes: convert a UTF-8 str to bytes if the interpreter is Python 3
 # _l2bytes: convert a list of ints to bytes if the interpreter is Python 3
@@ -2887,8 +2887,8 @@ class _FeedURLHandler(urllib.request.HTTPDigestAuthHandler, urllib.request.HTTPR
         if base64 is None or 'Authorization' not in req.headers \
                           or 'WWW-Authenticate' not in headers:
             return self.http_error_default(req, fp, code, msg, headers)
-        auth = _base64decode(req.headers['Authorization'].split(' ')[1])
-        user, passw = auth.split(':')
+        auth = _base64decode(req.headers['Authorization'].split(' ')[1].encode('ascii'))
+        user, passw = auth.split(b':')
         realm = re.findall('realm="([^"]*)"', headers['WWW-Authenticate'])[0]
         self.add_password(realm, host, user, passw)
         retry = self.http_error_auth_reqed('www-authenticate', host, req, headers)
@@ -2948,7 +2948,7 @@ def _open_resource(url_file_stream_or_string, etag, modified, agent, referrer, h
                 user_passwd, realhost = urllib.parse.splituser(realhost)
                 if user_passwd:
                     url_file_stream_or_string = '%s://%s%s' % (urltype, realhost, rest)
-                    auth = base64.standard_b64encode(user_passwd).strip()
+                    auth = base64.standard_b64encode(user_passwd.encode('utf8')).strip().decode('ascii')
 
         # iri support
         if isinstance(url_file_stream_or_string, str):
