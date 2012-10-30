@@ -3719,6 +3719,11 @@ def convert_to_utf8(http_headers, data):
         rfc3023_encoding = 'gb18030'
     if xml_encoding.lower() == 'gb2312':
         xml_encoding = 'gb18030'
+    # almost all feeds in cp949 are declared as euc-kr, but since they're
+    # incompatible in some cases, we're doing a simple check:
+    if (rfc3023_encoding.lower() in ['euc-kr', 'ks_c_5601-1987'] and
+            re.search(b'[\x81-\xa0]', data)):
+        rfc3023_encoding = 'cp949'
 
     # there are four encodings to keep track of:
     # - http_encoding is the encoding declared in the Content-Type HTTP header
